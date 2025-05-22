@@ -2,58 +2,236 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📍 เลือกตำแหน่ง</title>
+  <title>📋 แบบฟอร์มขอรับบริการ</title>
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; }
-    #map { height: 100%; width: 100%; }
-    #linkDisplay {
-      position: absolute;
-      bottom: 10px;
-      left: 10px;
-      right: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      font-size: 14px;
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f7f9fc;
+      padding: 40px 20px;
+      max-width: 700px;
+      margin: auto;
+    }
+
+    h1 {
       text-align: center;
-      z-index: 999;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+
+    form {
+      background-color: #ffffff;
+      padding: 25px 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 15px;
+      color: #34495e;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    input[type="email"],
+    input[type="url"],
+    textarea,
+    input[type="file"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #progressBar {
+      display: none;
+      width: 100%;
+      margin-top: 15px;
+      height: 20px;
+    }
+
+    #loadingText {
+      display: none;
+      color: #555;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    #responseMessage {
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div id="linkDisplay">แตะที่แผนที่เพื่อคัดลอกลิงก์พิกัด 📍</div>
+  <h1>📋 แบบฟอร์มขอรับบริการ</h1>
+  <form id="serviceForm">
+    <label>ชื่อบริษัท:
+      <input type="text" name="company" required>
+    </label>
+    <label>ชื่อผู้ติดต่อ:
+      <input type="text" name="contact" required>
+    </label>
+    <label>เบอร์โทรศัพท์:
+      <input type="tel" name="phone" required>
+    </label>
+    <label>อีเมล:
+      <input type="email" name="email" required>
+    </label>
+
+    <label>ประเภทงาน:</label>
+    <div style="margin-bottom: 15px;">
+      <label><input type="checkbox" name="jobType" value="Battery Replacement"> Battery Replacement</label><br>
+      <label><input type="checkbox" name="jobType" value="Preventive Maintenance"> Preventive Maintenance</label><br>
+      <label>
+        <input type="checkbox" id="otherJobCheckbox" value="Other"> Other (ระบุ)
+        <input type="text" id="otherJobInput" placeholder="โปรดระบุ" style="margin-top: 5px; display: none;">
+      </label>
+    </div>
+
+    <label>ลิงก์ Google Maps:
+      <input type="url" name="mapLink" required>
+    </label>
+    <label>รายละเอียดงาน:
+      <textarea name="details" required></textarea>
+    </label>
+    <label>แนบไฟล์ 1: <input type="file" name="file0"></label>
+    <label>แนบไฟล์ 2: <input type="file" name="file1"></label>
+    <label>แนบไฟล์ 3: <input type="file" name="file2"></label>
+    <label>แนบไฟล์ 4: <input type="file" name="file3"></label>
+    <label>แนบไฟล์ 5: <input type="file" name="file4"></label>
+    <button type="submit">📨 ส่งข้อมูล</button>
+  </form>
+
+  <progress id="progressBar" value="0" max="100"></progress>
+  <p id="loadingText">⏳ กำลังส่งข้อมูล กรุณารอสักครู่...</p>
+  <p id="responseMessage"></p>
 
   <script>
-    let map, marker;
-    function initMap() {
-      const center = { lat: 13.736717, lng: 100.523186 }; // กรุงเทพ
+    document.getElementById("otherJobCheckbox").addEventListener("change", function () {
+      document.getElementById("otherJobInput").style.display = this.checked ? "block" : "none";
+    });
 
-      map = new google.maps.Map(document.getElementById("map"), {
-        center,
-        zoom: 13
-      });
+    document.getElementById("serviceForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
 
-      map.addListener("click", (e) => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        const link = `https://www.google.com/maps?q=${lat},${lng}`;
-        document.getElementById("linkDisplay").innerText = `📋 คัดลอกแล้ว: ${link}`;
-        navigator.clipboard.writeText(link);
+      document.getElementById("progressBar").style.display = "block";
+      document.getElementById("progressBar").value = 30;
+      document.getElementById("loadingText").style.display = "block";
 
-        if (!marker) {
-          marker = new google.maps.Marker({
-            position: e.latLng,
-            map: map
-          });
-        } else {
-          marker.setPosition(e.latLng);
+      const jobTypes = [];
+      form.querySelectorAll('input[name="jobType"]:checked').forEach(cb => jobTypes.push(cb.value));
+
+      if (document.getElementById("otherJobCheckbox").checked) {
+        const otherVal = document.getElementById("otherJobInput").value.trim();
+        if (otherVal) jobTypes.push(`Other: ${otherVal}`);
+      }
+
+      const data = {
+        company: formData.get("company"),
+        contact: formData.get("contact"),
+        phone: formData.get("phone"),
+        email: formData.get("email"),
+        jobType: jobTypes.join(', '),
+        mapLink: formData.get("mapLink"),
+        details: formData.get("details")
+      };
+
+      const files = [];
+      for (let i = 0; i < 5; i++) {
+        const file = formData.get(`file${i}`);
+        if (file && file.size > 0) {
+          const base64 = await toBase64(file);
+          files.push(base64);
         }
+      }
+
+      google.script.run
+        .withSuccessHandler(res => {
+          document.getElementById("progressBar").value = 100;
+          document.getElementById("responseMessage").innerText = res;
+          form.reset();
+          document.getElementById("otherJobInput").style.display = "none";
+          hideProgress();
+        })
+        .withFailureHandler(err => {
+          document.getElementById("responseMessage").innerText = "❌ เกิดข้อผิดพลาด";
+          console.error(err);
+          hideProgress();
+        })
+        .uploadForm(data, files);
+    });
+
+    function toBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
     }
+
+    function hideProgress() {
+      setTimeout(() => {
+        document.getElementById("progressBar").style.display = "none";
+        document.getElementById("loadingText").style.display = "none";
+        document.getElementById("progressBar").value = 0;
+      }, 1000);
+    }
+
+    // ✅ เพิ่มโค้ดนี้สำหรับเติมลิงก์ Google Maps อัตโนมัติ
+    window.addEventListener("load", function () {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function (position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const link = `https://www.google.com/maps?q=${lat},${lng}`;
+            document.querySelector('input[name="mapLink"]').value = link;
+          },
+          function (error) {
+            console.warn("ไม่สามารถดึงพิกัดได้:", error.message);
+          }
+        );
+      } else {
+        console.warn("เบราว์เซอร์ไม่รองรับ GPS");
+      }
+    });
   </script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAS50TmpUJ5qNzD4Z6EsbTAVnfGAJWDIOg&callback=initMap" async defer></script>
 </body>
 </html>
